@@ -339,7 +339,7 @@ textarea{min-height:70px}
       x:Math.random()*W,y:Math.random()*H,
       s:24+Math.random()*16,
       len:14+Math.random()*18,
-      op:.08+Math.random()*.15,
+      op:.16+Math.random()*.20,
       ox:0,oy:0
     };
   }
@@ -348,7 +348,7 @@ textarea{min-height:70px}
       x:Math.random()*W,y:Math.random()*H,
       s:10+Math.random()*8,
       len:5+Math.random()*6,
-      op:.03+Math.random()*.06,
+      op:.055+Math.random()*.075,
       ox:0,oy:0
     };
   }
@@ -457,6 +457,7 @@ textarea{min-height:70px}
     cx.lineCap='round';
 
     cx.lineWidth=.9;
+    cx.shadowBlur=0;
     for(const d of heavy){
       repel(d,11);
       d.ox*=.84;d.oy*=.84;
@@ -464,9 +465,18 @@ textarea{min-height:70px}
       const v=velocityFor(d,baseDx,baseDy,.95);
       const rx=d.x+d.ox,ry=d.y+d.oy;
 
+      // Hai pass: một lớp glow cực nhẹ + nét chính rõ hơn.
+      cx.shadowBlur=5;
+      cx.shadowColor='rgba(160,200,236,'+(d.op*.32)+')';
       drawOutsideCursor(
         rx-v.x*d.len,ry-v.y*d.len,rx,ry,
-        'rgba(160,200,236,'+d.op+')',.9
+        'rgba(180,214,244,'+(d.op*.35)+')',1.8
+      );
+
+      cx.shadowBlur=0;
+      drawOutsideCursor(
+        rx-v.x*d.len,ry-v.y*d.len,rx,ry,
+        'rgba(175,210,242,'+d.op+')',.9
       );
 
       d.x+=v.x*d.s;
@@ -477,6 +487,7 @@ textarea{min-height:70px}
       }
     }
 
+    cx.shadowBlur=0;
     cx.lineWidth=.45;
     for(const d of light){
       repel(d,7);
@@ -487,7 +498,7 @@ textarea{min-height:70px}
 
       drawOutsideCursor(
         rx-v.x*d.len,ry-v.y*d.len,rx,ry,
-        'rgba(205,224,244,'+d.op+')',.45
+        'rgba(210,228,246,'+d.op+')',.45
       );
 
       d.x+=v.x*d.s;
