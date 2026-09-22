@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nhóm Thuyết Trình</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fg:#c8c8c8;
+  --fg-dim:#4a4a4a;
+  --fg-muted:#2e2e2e;
+  --border:rgba(255,255,255,.08);
+  --border-h:rgba(255,255,255,.24);
+  --bg-card:rgba(8,8,11,.72);
+  --bg-card-h:rgba(14,14,20,.88);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{
+  height:100%;
+  background:#040406;
+  color:var(--fg);
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  overflow-x:hidden;
+}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+.wrap{
+  position:relative;z-index:1;
+  max-width:1100px;margin:0 auto;
+  padding:48px 24px 100px;
+}
+
+/* strip */
+.strip{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:36px;
+}
+.strip-count{
+  font-size:10px;font-weight:500;
+  letter-spacing:.22em;color:var(--fg-dim);
+  white-space:nowrap;
+}
+.strip-line{
+  flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(255,255,255,.07),transparent);
+}
+
+/* grid */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+}
+@media(max-width:860px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+/* widget */
+.widget{
+  position:relative;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--bg-card);
+  backdrop-filter:blur(6px);
+  padding:16px 14px 14px;
+  min-height:130px;
+  cursor:pointer;
+  display:flex;flex-direction:column;gap:7px;
+  transition:transform .22s cubic-bezier(.22,1,.36,1),
+             border-color .2s, background .2s, box-shadow .2s;
+}
+.widget:hover{
+  transform:translateY(-3px);
+  border-color:var(--border-h);
+  background:var(--bg-card-h);
+  box-shadow:0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.05) inset;
+}
+@keyframes widgetIn{
+  from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(4px)}
+  to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.widget.enter{
+  animation:widgetIn .52s cubic-bezier(.22,1,.36,1) both;
+  animation-delay:var(--enter-delay,0ms);
+}
+
+.w-num{font-size:10px;font-weight:700;letter-spacing:.24em;color:#fff}
+.w-line{height:1px;background:linear-gradient(90deg,rgba(255,255,255,.13),transparent)}
+.w-names{
+  font-size:10px;line-height:1.75;color:var(--fg-dim);flex:1;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+  font-weight:300;white-space:pre-line;
+}
+.w-hint{font-size:8px;letter-spacing:.18em;color:var(--fg-muted);margin-top:auto}
+
+/* create widget */
+.widget.create{
+  border:1px dashed rgba(255,255,255,.1);
+  align-items:center;justify-content:center;
+  background:rgba(255,255,255,.01);
+  gap:8px;
+}
+.create-icon{font-size:18px;font-weight:300;color:rgba(255,255,255,.18);line-height:1;transition:color .2s}
+.create-lbl{font-size:9px;letter-spacing:.24em;color:rgba(255,255,255,.15);transition:color .2s}
+.widget.create:hover{border-color:rgba(255,255,255,.28)}
+.widget.create:hover .create-icon{color:rgba(255,255,255,.65)}
+.widget.create:hover .create-lbl{color:rgba(255,255,255,.4)}
+
+/* overlay — blur + fade + panel motion */
+.overlay{
+  position:fixed;inset:0;z-index:40;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .24s ease,visibility 0s linear .24s;
+}
+.overlay.open{
+  opacity:1;visibility:visible;pointer-events:auto;
+  transition-delay:0s;
+}
+.overlay::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(0,0,0,0);
+  backdrop-filter:blur(0) saturate(1);
+  transition:background .28s ease,backdrop-filter .28s ease;
+}
+.overlay.open::before{
+  background:rgba(0,0,0,.75);
+  backdrop-filter:blur(14px) saturate(.6);
+}
+
+/* panel */
+.panel{
+  position:relative;z-index:1;
+  width:100%;max-width:430px;max-height:90vh;overflow-y:auto;
+  background:rgba(7,7,11,.97);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  box-shadow:0 32px 64px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.03) inset;
+  padding:28px 24px 24px;
+  opacity:0;
+  transform:translateY(12px) scale(.985);
+  transition:opacity .26s ease,transform .42s cubic-bezier(.22,1,.36,1);
+}
+.overlay.open .panel{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+body.modal-open{overflow:hidden;}
+
+/* form */
+.field{display:block;margin-bottom:13px}
+.field-lbl{display:block;font-size:8px;letter-spacing:.2em;color:var(--fg-dim);margin-bottom:6px;font-weight:400}
+input,textarea{
+  width:100%;background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.09);border-radius:6px;
+  color:var(--fg);font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:300;padding:9px 11px;outline:none;resize:vertical;
+  transition:border-color .15s,box-shadow .15s;
+}
+input:focus,textarea:focus{
+  border-color:rgba(255,255,255,.32);
+  box-shadow:0 0 0 3px rgba(255,255,255,.03);
+}
+::placeholder{color:rgba(255,255,255,.1)}
+input:disabled{opacity:.45;cursor:not-allowed}
+textarea{min-height:70px}
+
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.btn{
+  font-family:'JetBrains Mono',monospace;cursor:pointer;border-radius:6px;
+  font-size:9px;letter-spacing:.22em;font-weight:500;
+  padding:11px 0;flex:1;transition:all .15s;
+}
+.btn-ok{background:#fff;color:#000;border:none}
+.btn-ok:hover{background:#e0e0e0}.btn:disabled{opacity:.45;cursor:wait}
+.btn-cancel{background:transparent;color:var(--fg-dim);border:1px solid rgba(255,255,255,.1)}
+.btn-cancel:hover{color:#fff;border-color:rgba(255,255,255,.32)}
+
+/* detail */
+.section-lbl{font-size:8px;letter-spacing:.2em;color:var(--fg-muted);margin:16px 0 7px;font-weight:400}
+.members-list{list-style:none}
+.members-list li{
+  font-size:11px;color:var(--fg-dim);padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);font-weight:300;
+}
+.members-list li:last-child{border:none}
+.doc-links{display:flex;flex-direction:column;gap:6px}
+.doc-links a{
+  display:block;text-align:center;text-decoration:none;color:var(--fg-dim);
+  font-size:9px;letter-spacing:.18em;
+  border:1px solid rgba(255,255,255,.09);border-radius:6px;padding:10px 0;
+  transition:all .15s;font-weight:400;
+}
+.doc-links a:hover{border-color:rgba(255,255,255,.38);color:#fff}
+.btn-delete{
+  width:100%;margin-top:16px;background:transparent;
+  color:rgba(255,80,80,.45);border:1px solid rgba(255,80,80,.15);
+  border-radius:6px;font-family:'JetBrains Mono',monospace;
+  font-size:9px;letter-spacing:.2em;padding:10px 0;cursor:pointer;transition:all .15s;
+}
+.btn-delete:hover{color:#ff6b6b;border-color:rgba(255,80,80,.45)}
+
+/* banner thông báo khi chưa có config */
+#mode-banner{
+  position:fixed;top:0;left:0;right:0;z-index:99;
+  background:rgba(255,180,40,.12);
+  border-bottom:1px solid rgba(255,180,40,.2);
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;letter-spacing:.16em;color:rgba(255,180,40,.8);
+  text-align:center;padding:8px 16px;
+  display:none;
+}
+#mode-banner a{color:rgba(255,180,40,.9);text-decoration:underline;cursor:pointer}
+
+/* sync dot */
+.sync-dot{
+  position:fixed;bottom:16px;right:16px;z-index:5;
+  font-size:9px;letter-spacing:.14em;color:var(--fg-muted);
+  display:flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;
+}
+.dot{width:5px;height:5px;border-radius:50%;background:#1e1e1e;transition:background .4s}
+.dot.online{background:#3fb96a;box-shadow:0 0 5px rgba(63,185,106,.55)}
+.dot.offline{background:#e05555}
+.dot.local{background:#f0a030;box-shadow:0 0 5px rgba(240,160,48,.5)}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="mode-banner">
+  ⚠ chưa có firebase config — đang dùng localStorage (chỉ lưu trên máy này).
+  <a onclick="document.getElementById('mode-banner').style.display='none'">✕</a>
+</div>
+
+<div class="wrap">
+  <div class="strip">
+    <span class="strip-count" id="counter">0 / 15</span>
+    <div class="strip-line"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="sync-dot">
+  <div class="dot" id="syncDot"></div>
+  <span id="syncLabel">connecting</span>
+</div>
+
+<!-- Form tạo nhóm -->
+<div class="overlay" id="formOverlay">
+  <form class="panel" id="groupForm" autocomplete="off">
+    <button type="button" class="close-btn" data-close="formOverlay">&times;</button>
+    <div class="panel-title">TẠO NHÓM</div>
+    <label class="field">
+      <span class="field-lbl">SỐ THỨ TỰ</span>
+      <input id="fStt" type="number" min="1" max="99" required>
+    </label>
+    <label class="field">
+      <span class="field-lbl">THÀNH VIÊN — mỗi dòng một tên</span>
+      <textarea id="fMembers" required placeholder="Nguyễn Văn A&#10;Trần Thị B&#10;Lê Văn C"></textarea>
+    </label>
+    <label class="field">
+      <span class="field-lbl">LINK FILE CÂU HỎI</span>
+      <input id="fQuiz" type="url" required placeholder="https://drive.google.com/...">
+    </label>
+    <label class="field">
+      <span class="field-lbl">LINK POWERPOINT</span>
+      <input id="fPpt" type="url" required placeholder="https://drive.google.com/...">
+    </label>
+    <label class="field">
+      <span class="field-lbl">LINK FILE MP3</span>
+      <input id="fMp3" type="url" required placeholder="https://drive.google.com/...">
+    </label>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-ok" id="saveBtn">OK</button>
+      <button type="button" class="btn btn-cancel" data-close="formOverlay">HỦY</button>
+    </div>
+  </form>
+</div>
+
+<!-- Chi tiết nhóm -->
+<div class="overlay" id="detailOverlay">
+  <div class="panel">
+    <button class="close-btn" data-close="detailOverlay">&times;</button>
+    <div class="panel-title" id="dTitle">NHÓM 01</div>
+    <div class="section-lbl">THÀNH VIÊN</div>
+    <ul class="members-list" id="dMembers"></ul>
+    <div class="section-lbl">TÀI LIỆU</div>
+    <div class="doc-links">
+      <a id="dQuiz" target="_blank" rel="noopener">File câu hỏi</a>
+      <a id="dPpt"  target="_blank" rel="noopener">PowerPoint</a>
+      <a id="dMp3"  target="_blank" rel="noopener">File MP3</a>
+    </div>
+    <button class="btn btn-cancel" id="dEdit" style="width:100%;margin-top:12px">CHỈNH SỬA</button>
+    <button class="btn-delete" id="dDelete">Xóa nhóm này</button>
+  </div>
+</div>
+
+<!-- ═══ RAIN — hướng theo chuột, giới hạn góc, field né con trỏ ═══ -->
+<script>
+(function(){
+  const cv = document.getElementById('bg');
+  const cx = cv.getContext('2d');
+  let W=0,H=0,heavy=[],light=[];
+
+  // Giới hạn quanh phương thẳng đứng: mưa luôn có thành phần rơi xuống.
+  const MIN_ANGLE=-0.62; // ~ -35.5°
+  const MAX_ANGLE= 0.62; // ~ +35.5°
+  const REPEL_RADIUS=128;
+  const CURSOR_HOLE=32;
+
+  let mx=-9999,my=-9999;
+  let angle=0,targetAngle=0;
+
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const smooth=t=>t*t*(3-2*t);
+
+  window.addEventListener('pointermove',e=>{
+    if(e.pointerType==='touch') return;
+    mx=e.clientX; my=e.clientY;
+
+    // Bám vị trí ngang của chuột, rồi clamp tuyệt đối.
+    // Vì |angle| <= 35.5°, cos(angle) luôn dương => không có mưa bay ngược lên.
+    const horizontal=clamp(
+      (mx-W*.5)/Math.max(1,W*.5),-1,1
+    );
+    targetAngle=clamp(horizontal*MAX_ANGLE,MIN_ANGLE,MAX_ANGLE);
+  },{passive:true});
+
+  function resetPointer(){
+    mx=-9999;my=-9999;targetAngle=0;
+  }
+  window.addEventListener('pointerleave',resetPointer);
+  window.addEventListener('blur',resetPointer);
+
+  function mkH(){
+    return {
+      x:Math.random()*W,y:Math.random()*H,
+      s:24+Math.random()*16,
+      len:14+Math.random()*18,
+      op:.08+Math.random()*.15,
+      ox:0,oy:0
+    };
+  }
+  function mkL(){
+    return {
+      x:Math.random()*W,y:Math.random()*H,
+      s:10+Math.random()*8,
+      len:5+Math.random()*6,
+      op:.03+Math.random()*.06,
+      ox:0,oy:0
+    };
+  }
+
+  function resize(){
+    W=cv.width=innerWidth;
+    H=cv.height=innerHeight;
+    const area=Math.max(1,W*H);
+    heavy=Array.from({length:Math.min(220,area/5500|0)},mkH);
+    light=Array.from({length:Math.min(300,area/3600|0)},mkL);
+  }
+  window.addEventListener('resize',resize,{passive:true});
+  resize();
+
+  // Vector field cục bộ: xa cursor = hướng mưa chung,
+  // gần cursor = thêm lực đẩy xuyên tâm nhưng vẫn khóa vy > 0.
+  function velocityFor(d,baseDx,baseDy,strength){
+    const px=d.x+d.ox,py=d.y+d.oy;
+    const rx=px-mx,ry=py-my;
+    const dist2=rx*rx+ry*ry;
+
+    let vx=baseDx,vy=baseDy;
+
+    if(dist2<REPEL_RADIUS*REPEL_RADIUS){
+      const dist=Math.sqrt(dist2)||1;
+      const falloff=smooth(1-dist/REPEL_RADIUS);
+      const nx=rx/dist,ny=ry/dist;
+      vx+=nx*falloff*strength;
+      vy+=ny*falloff*strength*.38;
+    }
+
+    vy=Math.max(vy,.52);
+    const mag=Math.hypot(vx,vy)||1;
+    return {x:vx/mag,y:vy/mag};
+  }
+
+  // Dịch offset nhẹ để hạt "nhường đường" trước khi đổi velocity.
+  function repel(d,str){
+    const dx=d.x+d.ox-mx,dy=d.y+d.oy-my;
+    const d2=dx*dx+dy*dy;
+
+    if(d2<REPEL_RADIUS*REPEL_RADIUS){
+      const dist=Math.sqrt(d2)||1;
+      const f=smooth(1-dist/REPEL_RADIUS);
+      d.ox+=(dx/dist)*f*str;
+      d.oy+=(dy/dist)*f*str*.55;
+    }
+  }
+
+  // Nếu line cắt vùng quanh cursor, cắt chính xác phần giao nhau.
+  function drawOutsideCursor(x1,y1,x2,y2,color,width){
+    const ax=x1-mx,ay=y1-my;
+    const bx=x2-mx,by=y2-my;
+    const vx=bx-ax,vy=by-ay;
+    const vv=vx*vx+vy*vy;
+
+    cx.strokeStyle=color;
+    cx.lineWidth=width;
+
+    if(mx<-1000 || vv===0){
+      cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke();
+      return;
+    }
+
+    const t=clamp(-(ax*vx+ay*vy)/vv,0,1);
+    const px=ax+vx*t,py=ay+vy*t;
+    const dist=Math.hypot(px,py);
+
+    if(dist>=CURSOR_HOLE){
+      cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke();
+      return;
+    }
+
+    const total=Math.sqrt(vv);
+    const half=Math.min(total*.45,CURSOR_HOLE+4);
+    const ux=vx/total,uy=vy/total;
+    const cutX1=mx-ux*half,cutY1=my-uy*half;
+    const cutX2=mx+ux*half,cutY2=my+uy*half;
+
+    if(Math.hypot(cutX1-x1,cutY1-y1)>.5){
+      cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(cutX1,cutY1);cx.stroke();
+    }
+    if(Math.hypot(x2-cutX2,y2-cutY2)>.5){
+      cx.beginPath();cx.moveTo(cutX2,cutY2);cx.lineTo(x2,y2);cx.stroke();
+    }
+  }
+
+  function respawn(d,mk,dx){
+    Object.assign(d,mk());
+    if(Math.abs(dx)>.15 && Math.random()<.4){
+      d.x=dx>0?-20:W+20;
+      d.y=Math.random()*H*.55;
+    }else{
+      d.x=Math.random()*W;
+      d.y=-30-Math.random()*70;
+    }
+  }
+
+  (function tick(){
+    cx.clearRect(0,0,W,H);
+
+    angle+=(targetAngle-angle)*.055;
+    const baseDx=Math.sin(angle);
+    const baseDy=Math.cos(angle);
+
+    cx.lineCap='round';
+
+    cx.lineWidth=.9;
+    for(const d of heavy){
+      repel(d,11);
+      d.ox*=.84;d.oy*=.84;
+
+      const v=velocityFor(d,baseDx,baseDy,.95);
+      const rx=d.x+d.ox,ry=d.y+d.oy;
+
+      drawOutsideCursor(
+        rx-v.x*d.len,ry-v.y*d.len,rx,ry,
+        'rgba(160,200,236,'+d.op+')',.9
+      );
+
+      d.x+=v.x*d.s;
+      d.y+=v.y*d.s;
+
+      if(d.y-d.len>H || d.x<-50 || d.x>W+50){
+        respawn(d,mkH,baseDx);
+      }
+    }
+
+    cx.lineWidth=.45;
+    for(const d of light){
+      repel(d,7);
+      d.ox*=.87;d.oy*=.87;
+
+      const v=velocityFor(d,baseDx,baseDy,.72);
+      const rx=d.x+d.ox,ry=d.y+d.oy;
+
+      drawOutsideCursor(
+        rx-v.x*d.len,ry-v.y*d.len,rx,ry,
+        'rgba(205,224,244,'+d.op+')',.45
+      );
+
+      d.x+=v.x*d.s;
+      d.y+=v.y*d.s;
+
+      if(d.y-d.len>H || d.x<-50 || d.x>W+50){
+        respawn(d,mkL,baseDx);
+      }
+    }
+
+    requestAnimationFrame(tick);
+  })();
+})();
+</script>
+
+<!-- ═══ APP LOGIC — Firebase + localStorage fallback ═══ -->
+<script type="module">
+/* ══ FIREBASE CONFIG ══════════════════════════════════════
+   Config hiện đã được điền. Firebase API key của web app không phải password;
+   quyền đọc/ghi thật sự vẫn do Realtime Database Security Rules quyết định.
+   ═════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyAbPJe-Y_Tot0WbLB3mAgS8RSNc0j58wf8",
+  authDomain:"adad-7740d.firebaseapp.com",
+  databaseURL:"https://adad-7740d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"adad-7740d",
+  storageBucket:"adad-7740d.firebasestorage.app",
+  messagingSenderId:"609939662720",
+  appId:"1:609939662720:web:5dcf38c6ab725e7d4d8365"
+};
+
+const USE_FIREBASE=Boolean(
+  FIREBASE_CONFIG.apiKey &&
+  FIREBASE_CONFIG.authDomain &&
+  FIREBASE_CONFIG.databaseURL &&
+  FIREBASE_CONFIG.projectId &&
+  FIREBASE_CONFIG.appId &&
+  !FIREBASE_CONFIG.apiKey.startsWith('YOUR_')
+);
+
+const MAX=15;
+let groups={};
+let currentStt=null;
+let editingStt=null;
+let hasRenderedOnce=false;
+const seenGroupKeys=new Set();
+
+const dot=document.getElementById('syncDot');
+const lbl=document.getElementById('syncLabel');
+const counter=document.getElementById('counter');
+const grid=document.getElementById('grid');
+const saveBtn=document.getElementById('saveBtn');
+const sttInput=document.getElementById('fStt');
+const formTitle=document.querySelector('#groupForm .panel-title');
+const editBtn=document.getElementById('dEdit');
+
+function setStatus(type,text){
+  dot.className='dot '+type;
+  lbl.textContent=text;
+}
+
+function showLocalBanner(text){
+  const banner=document.getElementById('mode-banner');
+  banner.firstChild.textContent='⚠ '+text+' ';
+  banner.style.display='block';
+}
+
+/* ═══ FIREBASE ═══ */
+async function initFirebase(){
+  const {initializeApp}=await import(
+    "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"
+  );
+  const {getDatabase,ref,onValue,set,remove,push}=await import(
+    "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"
+  );
+
+  const app=initializeApp(FIREBASE_CONFIG);
+  const db=getDatabase(app);
+  const gRef=ref(db,'groups');
+
+  onValue(gRef,snap=>{
+    groups={};
+
+    snap.forEach(child=>{
+      const g=child.val();
+      if(g && Number.isFinite(Number(g.stt))){
+        groups[g.stt]={...g,_key:child.key};
+      }
+    });
+
+    render();
+    setStatus('online','realtime');
+  },err=>{
+    console.error('Firebase read error:',err);
+    setStatus('offline','rules / offline');
+    showLocalBanner(
+      'Firebase chưa đọc được dữ liệu — kiểm tra Realtime Database Rules.'
+    );
+  });
+
+  window._saveGroup=async data=>{
+    const newRef=push(gRef);
+    await set(newRef,data);
+  };
+
+  window._updateGroup=async(stt,data)=>{
+    const g=groups[stt];
+    if(!g || !g._key) throw new Error('Không tìm thấy group để cập nhật.');
+    await set(ref(db,'groups/'+g._key),data);
+  };
+
+  window._deleteGroup=async stt=>{
+    const g=groups[stt];
+    if(g && g._key){
+      await remove(ref(db,'groups/'+g._key));
+    }
+  };
+}
+
+/* ═══ LOCAL FALLBACK ═══ */
+function initLocal(){
+  showLocalBanner(
+    'chưa kết nối Firebase — đang dùng localStorage (chỉ lưu trên máy này).'
+  );
+
+  const LS_KEY='nhom_thuyet_trinh_v1';
+
+  function load(){
+    try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}
+    catch(e){return {};}
+  }
+  function save(data){
+    localStorage.setItem(LS_KEY,JSON.stringify(data));
+  }
+
+  groups=load();
+  render();
+  setStatus('local','local only');
+
+  window._saveGroup=async data=>{
+    groups[data.stt]={...data,_key:String(data.stt)};
+    save(groups);
+    render();
+  };
+
+  window._updateGroup=async(stt,data)=>{
+    if(!groups[stt]) throw new Error('Không tìm thấy group để cập nhật.');
+    groups[stt]={...data,_key:String(stt)};
+    save(groups);
+    render();
+  };
+
+  window._deleteGroup=async stt=>{
+    delete groups[stt];
+    save(groups);
+    render();
+  };
+}
+
+/* ═══ RENDER — chỉ animate group mới ═══ */
+function esc(s){
+  return String(s).replace(/[&<>"']/g,c=>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])
+  );
+}
+
+function render(){
+  grid.innerHTML='';
+
+  const sorted=Object.values(groups).sort((a,b)=>a.stt-b.stt);
+  const currentKeys=new Set(
+    sorted.map(g=>String(g._key ?? g.stt))
+  );
+
+  sorted.forEach((g,index)=>{
+    const el=widgetEl(g);
+    const key=String(g._key ?? g.stt);
+
+    if(hasRenderedOnce && !seenGroupKeys.has(key)){
+      el.classList.add('enter');
+      el.style.setProperty(
+        '--enter-delay',
+        Math.min(index*35,210)+'ms'
+      );
+    }
+
+    grid.appendChild(el);
+  });
+
+  if(sorted.length<MAX) grid.appendChild(createEl());
+  counter.textContent=sorted.length+' / '+MAX;
+
+  seenGroupKeys.clear();
+  currentKeys.forEach(k=>seenGroupKeys.add(k));
+  hasRenderedOnce=true;
+}
+
+function widgetEl(g){
+  const d=document.createElement('div');
+  d.className='widget';
+  d.innerHTML=
+    '<div class="w-num">nhóm '+String(g.stt).padStart(2,'0')+'</div>'+
+    '<div class="w-line"></div>'+
+    '<div class="w-names">'+g.members.map(esc).join('\n')+'</div>'+
+    '<div class="w-hint">xem tài liệu →</div>';
+  d.onclick=()=>openDetail(g.stt);
+  return d;
+}
+
+function createEl(){
+  const d=document.createElement('div');
+  d.className='widget create';
+  d.innerHTML=
+    '<div class="create-icon">+</div>'+
+    '<div class="create-lbl">tạo nhóm</div>';
+  d.onclick=()=>openForm();
+  return d;
+}
+
+/* ═══ MODALS ═══ */
+function updateBodyLock(){
+  document.body.classList.toggle(
+    'modal-open',
+    document.querySelector('.overlay.open')!==null
+  );
+}
+function openO(id){
+  document.getElementById(id).classList.add('open');
+  updateBodyLock();
+}
+function closeO(id){
+  document.getElementById(id).classList.remove('open');
+  updateBodyLock();
+}
+
+document.querySelectorAll('[data-close]').forEach(b=>
+  b.onclick=()=>closeO(b.dataset.close)
+);
+
+document.querySelectorAll('.overlay').forEach(o=>
+  o.addEventListener('click',e=>{
+    if(e.target===o){
+      o.classList.remove('open');
+      updateBodyLock();
+    }
+  })
+);
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.overlay.open')
+      .forEach(o=>o.classList.remove('open'));
+    updateBodyLock();
+  }
+});
+
+function resetFormMode(){
+  editingStt=null;
+  formTitle.textContent='TẠO NHÓM';
+  sttInput.disabled=false;
+}
+
+function openForm(stt=null){
+  const form=document.getElementById('groupForm');
+  form.reset();
+
+  if(stt!==null && groups[stt]){
+    const g=groups[stt];
+    editingStt=stt;
+    formTitle.textContent='CHỈNH SỬA NHÓM';
+    sttInput.value=g.stt;
+    sttInput.disabled=true;
+    document.getElementById('fMembers').value=g.members.join('\n');
+    document.getElementById('fQuiz').value=g.links.quiz;
+    document.getElementById('fPpt').value=g.links.ppt;
+    document.getElementById('fMp3').value=g.links.mp3;
+  }else{
+    resetFormMode();
+
+    const used=new Set(Object.keys(groups).map(Number));
+    let next=1;
+    while(used.has(next)) next++;
+    sttInput.value=next;
+  }
+
+  openO('formOverlay');
+}
+
+document.getElementById('groupForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+
+  if(!editingStt && Object.keys(groups).length>=MAX){
+    alert('Đã đủ '+MAX+' nhóm.');
+    return;
+  }
+
+  const stt=parseInt(sttInput.value,10);
+  if(!stt || stt<1){
+    alert('Số thứ tự không hợp lệ.');
+    return;
+  }
+
+  if(!editingStt && groups[stt]){
+    alert('Nhóm '+stt+' đã tồn tại.');
+    return;
+  }
+
+  const members=document.getElementById('fMembers').value
+    .split(/[\n,;]+/)
+    .map(s=>s.trim())
+    .filter(Boolean);
+
+  if(!members.length){
+    alert('Nhập ít nhất 1 thành viên.');
+    return;
+  }
+
+  const quiz=document.getElementById('fQuiz').value.trim();
+  const ppt=document.getElementById('fPpt').value.trim();
+  const mp3=document.getElementById('fMp3').value.trim();
+
+  for(const u of [quiz,ppt,mp3]){
+    if(!/^https?:\/\//i.test(u)){
+      alert('Link phải bắt đầu bằng https://');
+      return;
+    }
+  }
+
+  saveBtn.disabled=true;
+  saveBtn.textContent='...';
+
+  try{
+    const data={
+      stt,
+      members,
+      links:{quiz,ppt,mp3}
+    };
+
+    if(editingStt){
+      await window._updateGroup(editingStt,data);
+    }else{
+      await window._saveGroup(data);
+    }
+
+    closeO('formOverlay');
+  }catch(err){
+    console.error(err);
+    alert(
+      'Không thể lưu thay đổi. Hãy kiểm tra Firebase Realtime Database Rules và kết nối mạng.'
+    );
+  }finally{
+    saveBtn.disabled=false;
+    saveBtn.textContent='OK';
+  }
+});
+
+function openDetail(stt){
+  const g=groups[stt];
+  if(!g) return;
+
+  currentStt=stt;
+  document.getElementById('dTitle').textContent=
+    'nhóm '+String(g.stt).padStart(2,'0');
+
+  document.getElementById('dMembers').innerHTML=
+    g.members.map(m=>'<li>'+esc(m)+'</li>').join('');
+
+  document.getElementById('dQuiz').href=g.links.quiz;
+  document.getElementById('dPpt').href=g.links.ppt;
+  document.getElementById('dMp3').href=g.links.mp3;
+
+  openO('detailOverlay');
+}
+
+editBtn.onclick=()=>{
+  const stt=currentStt;
+  closeO('detailOverlay');
+  openForm(stt);
+};
+
+document.getElementById('dDelete').onclick=async()=>{
+  if(!confirm('Xóa nhóm '+currentStt+'?')) return;
+
+  try{
+    await window._deleteGroup(currentStt);
+    closeO('detailOverlay');
+  }catch(err){
+    console.error(err);
+    alert(
+      'Không thể xóa nhóm. Nếu Rules công khai kiểu add/edit-only, thao tác xóa sẽ bị chặn.'
+    );
+  }
+};
+
+/* ═══ INIT ═══ */
+if(USE_FIREBASE){
+  setStatus('','connecting...');
+
+  initFirebase().catch(err=>{
+    console.warn('Firebase init error:',err);
+    setStatus('offline','firebase error');
+    showLocalBanner(
+      'Firebase không khởi tạo được — kiểm tra config / SDK / mạng.'
+    );
+    initLocal();
+  });
+}else{
+  initLocal();
+}
+</script>
+</body>
+</html>
